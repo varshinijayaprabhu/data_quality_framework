@@ -10,6 +10,16 @@ class DataValidator:
     powered by the Great Expectations Framework.
     Focuses on: Completeness, Accuracy, Validity, Consistency, Uniqueness, Integrity, Lineage.
     """
+    
+    def _safe_float(self, value, default=0.0):
+        """Safely convert value to float, handling None and string cases."""
+        if value is None:
+            return default
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+    
     def __init__(self):
         self.base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -61,8 +71,9 @@ class DataValidator:
             # 1. COMPLETENESS: Expect columns to not be null
             for col in df.columns:
                 res = dataset.expect_column_values_to_not_be_null(column=col, result_format="SUMMARY")
-                if res.success or res.result.get("unexpected_percent") is not None:
-                    percent_complete = 100.0 - float(res.result.get("unexpected_percent", 0.0))
+                if res.success or (res.result and res.result.get("unexpected_percent") is not None):
+                    unexpected_pct = res.result.get("unexpected_percent") if res.result else None
+                    percent_complete = 100.0 - self._safe_float(unexpected_pct, 0.0)
                     dimension_scores["Completeness"].append(percent_complete)
 
             # 2. ACCURACY & 3. VALIDITY: Type checking and Outlier bounds
@@ -76,7 +87,8 @@ class DataValidator:
                         min_val = mean - (3 * std)
                         max_val = mean + (3 * std)
                         res = dataset.expect_column_values_to_be_between(column=col, min_value=min_val, max_value=max_val, result_format="SUMMARY")
-                        percent_accurate = 100.0 - float(res.result.get("unexpected_percent", 0.0))
+                        unexpected_pct = res.result.get("unexpected_percent") if res.result else None
+                        percent_accurate = 100.0 - self._safe_float(unexpected_pct, 0.0)
                         dimension_scores["Accuracy"].append(percent_accurate)
                 
                 # Validity: Type matching
@@ -92,7 +104,8 @@ class DataValidator:
             date_cols = [c for c in df.columns if any(x in c.lower() for x in ['date', 'time', 'timestamp', '_at'])]
             for col in date_cols:
                 res = dataset.expect_column_values_to_be_dateutil_parseable(column=col, result_format="SUMMARY")
-                percent_consistent = 100.0 - float(res.result.get("unexpected_percent", 0.0))
+                unexpected_pct = res.result.get("unexpected_percent") if res.result else None
+                percent_consistent = 100.0 - self._safe_float(unexpected_pct, 0.0)
                 dimension_scores["Consistency"].append(percent_consistent)
 
             # 5. UNIQUENESS: Row-level duplication
@@ -113,7 +126,8 @@ class DataValidator:
             # 7. LINEAGE: Source Tracking
             if 'source' in df.columns:
                 res = dataset.expect_column_values_to_not_be_null(column='source', result_format="SUMMARY")
-                percent_lineage = 100.0 - float(res.result.get("unexpected_percent", 0.0))
+                unexpected_pct = res.result.get("unexpected_percent") if res.result else None
+                percent_lineage = 100.0 - self._safe_float(unexpected_pct, 0.0)
                 dimension_scores["Lineage"].append(percent_lineage)
             else:
                 dimension_scores["Lineage"].append(0.0)
@@ -133,8 +147,9 @@ class DataValidator:
         # 1. COMPLETENESS: Expect columns to not be null
         for col in df.columns:
             res = dataset.expect_column_values_to_not_be_null(column=col, result_format="SUMMARY")
-            if res.success or res.result.get("unexpected_percent") is not None:
-                percent_complete = 100.0 - float(res.result.get("unexpected_percent", 0.0))
+            if res.success or (res.result and res.result.get("unexpected_percent") is not None):
+                unexpected_pct = res.result.get("unexpected_percent") if res.result else None
+                percent_complete = 100.0 - self._safe_float(unexpected_pct, 0.0)
                 dimension_scores["Completeness"].append(percent_complete)
 
         # 2. ACCURACY & 3. VALIDITY: Type checking and Outlier bounds
@@ -148,7 +163,8 @@ class DataValidator:
                     min_val = mean - (3 * std)
                     max_val = mean + (3 * std)
                     res = dataset.expect_column_values_to_be_between(column=col, min_value=min_val, max_value=max_val, result_format="SUMMARY")
-                    percent_accurate = 100.0 - float(res.result.get("unexpected_percent", 0.0))
+                    unexpected_pct = res.result.get("unexpected_percent") if res.result else None
+                    percent_accurate = 100.0 - self._safe_float(unexpected_pct, 0.0)
                     dimension_scores["Accuracy"].append(percent_accurate)
             
             # Validity: Type matching
@@ -165,7 +181,8 @@ class DataValidator:
         date_cols = [c for c in df.columns if any(x in c.lower() for x in ['date', 'time', 'timestamp', '_at'])]
         for col in date_cols:
             res = dataset.expect_column_values_to_be_dateutil_parseable(column=col, result_format="SUMMARY")
-            percent_consistent = 100.0 - float(res.result.get("unexpected_percent", 0.0))
+            unexpected_pct = res.result.get("unexpected_percent") if res.result else None
+            percent_consistent = 100.0 - self._safe_float(unexpected_pct, 0.0)
             dimension_scores["Consistency"].append(percent_consistent)
 
         # 5. UNIQUENESS: Row-level duplication
@@ -189,7 +206,8 @@ class DataValidator:
         # 7. LINEAGE: Source Tracking
         if 'source' in df.columns:
             res = dataset.expect_column_values_to_not_be_null(column='source', result_format="SUMMARY")
-            percent_lineage = 100.0 - float(res.result.get("unexpected_percent", 0.0))
+            unexpected_pct = res.result.get("unexpected_percent") if res.result else None
+            percent_lineage = 100.0 - self._safe_float(unexpected_pct, 0.0)
             dimension_scores["Lineage"].append(percent_lineage)
         else:
             dimension_scores["Lineage"].append(0.0)

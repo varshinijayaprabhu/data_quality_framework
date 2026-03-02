@@ -1,21 +1,43 @@
 import sys
 import os
+from typing import TYPE_CHECKING, Optional, Dict, Any
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Set up module path
+# Set up module path so runtime imports work when running from the CLI
 sys.path.append(os.path.join(BASE_DIR, "src"))
 
-from ingestion.scraper import UniversalIngestor
-from ingestion.converter import DataConverter
-from remediation.cleaner import DataCleaner
+# Dynamic import helper - visible to both Pylance and runtime
+def _import_module(module_path: str, class_name: str) -> Any:
+    """Helper to import classes dynamically"""
+    import importlib
+    try:
+        # Try package style first
+        module = importlib.import_module(f"src.{module_path}")
+    except ImportError:
+        # Fallback to direct import
+        module = importlib.import_module(module_path)
+    return getattr(module, class_name)
 
-def purge_old_results():
+if TYPE_CHECKING:
+    # Pylance-friendly imports - these resolve correctly for type checking
+    from src.ingestion.scraper import UniversalIngestor
+    from src.ingestion.converter import DataConverter
+    from src.remediation.cleaner import DataCleaner
+    from src.qa.validator import DataValidator
+else:
+    # Runtime imports - use dynamic import to avoid Pylance errors
+    UniversalIngestor = _import_module("ingestion.scraper", "UniversalIngestor")
+    DataConverter = _import_module("ingestion.converter", "DataConverter")  
+    DataCleaner = _import_module("remediation.cleaner", "DataCleaner")
+
+
+def purge_old_results() -> None:
     """Security Fix: Clears all previous analysis results to prevent stale data visibility."""
     raw_dir = os.path.join(BASE_DIR, "data", "raw")
     processed_dir = os.path.join(BASE_DIR, "data", "processed")
     reports_dir = os.path.join(BASE_DIR, "data", "reports")
-    
+
     for d in [raw_dir, processed_dir, reports_dir]:
         if os.path.exists(d):
             for f in os.listdir(d):
@@ -24,11 +46,13 @@ def purge_old_results():
                     continue
                 try:
                     os.remove(os.path.join(d, f))
-                except:
+                except Exception:
+                    # best-effort purge; avoid raising here
                     pass
     print("[*] Secure Purge: All old raw, processed, and report records cleared.")
 
-def purge_raw_files():
+
+def purge_raw_files() -> None:
     """Security Fix: Erases sensitive raw uploaded/API data immediately after processing."""
     raw_dir = os.path.join(BASE_DIR, "data", "raw")
     if os.path.exists(raw_dir):
@@ -37,28 +61,34 @@ def purge_raw_files():
                 continue
             try:
                 os.remove(os.path.join(raw_dir, f))
-            except:
+            except Exception:
                 pass
     print("[*] Secure Purge: Temporary Raw Data permanently erased.")
 
-def run_pipeline(start_date=None, end_date=None, source_type="api", source_url=None, file_path=None, api_key=None):
+
+def run_pipeline(start_date: Optional[str] = None,
+                 end_date: Optional[str] = None,
+                 source_type: str = "api",
+                 source_url: Optional[str] = None,
+                 file_path: Optional[str] = None,
+                 api_key: Optional[str] = None) -> Dict[str, Any]:
     # Security: Wipe previous results immediately
     purge_old_results()
 
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("      UNIVERSAL DATA QUALITY PIPELINE")
     print(f"      MODE: {source_type.upper()}")
-    print("="*50 + "\n")
+    print("=" * 50 + "\n")
 
     # Normalize dates (handle empty strings from UI)
     start_date = start_date if start_date else None
     end_date = end_date if end_date else None
 
     try:
-        sys._last_step = "Ingestion"
+        setattr(sys, "_last_step", "Ingestion")
         print(f"[STEP 1/3] Starting Generic Data Ingestion ({source_type})...")
         ingestor = UniversalIngestor()
-        
+
         raw_path = None
         if source_type == "api":
             raw_path = ingestor.fetch_api_data(source_url, start_date, end_date, api_key)
@@ -90,30 +120,30 @@ def run_pipeline(start_date=None, end_date=None, source_type="api", source_url=N
             print("[!] Ingestion failed or no data found.")
             return {"status": "No Data Found for this period", "total_records": 0, "overall_trustability": 0, "dimensions": {}}
 
-        sys._last_step = "Unification"
+        setattr(sys, "_last_step", "Unification")
         print("\n[STEP 2/3] Transforming Raw Data to Unified Parquet Hub...")
         converter = DataConverter()
         hub_path = converter.unify_to_parquet(source_filter=source_type)
-        
+
         if not hub_path:
             print("[!] Unification failed. No data found for processing.")
             return {"status": "Unification Failed", "total_records": 0, "overall_trustability": 0}
 
-        sys._last_step = "Remediation"
+        setattr(sys, "_last_step", "Remediation")
         print("\n[STEP 3/5] Running Data Remediation (Auto-Fix)...")
         cleaner = DataCleaner()
         cleaned_file = cleaner.run_remediation()
-        
+
         if not cleaned_file:
             print("[!] Remediation failed.")
             return {"status": "Remediation Failed", "total_records": 0, "overall_trustability": 0}
 
-        sys._last_step = "Validation"
+        setattr(sys, "_last_step", "Validation")
         print("\n[STEP 4/5] Executing Advanced QA Engine (Initial Pass)...")
-        from qa.validator import DataValidator
+        DataValidator = _import_module("qa.validator", "DataValidator")
         validator = DataValidator()
         quality_report = validator.validate(cleaned_file)
-        
+
         if not quality_report:
             print("[!] QA Engine returned no report.")
             return {"status": "QA Failed", "total_records": 0, "overall_trustability": 0}
@@ -131,15 +161,15 @@ def run_pipeline(start_date=None, end_date=None, source_type="api", source_url=N
         # Step 6: Final Reporting Handled by GUI
         print("\n[STEP 5/5] Finalizing QA Payload for the Dashboard...")
 
-        print("\n" + "="*50)
+        print("\n" + "=" * 50)
         print("[OK] PIPELINE EXECUTION FINISHED!")
         print(f"Unified Hub: data/processed/raw_structured.parquet")
         print(f"Cleaned Hub: data/processed/cleaned_data.parquet")
-        print("="*50 + "\n")
-        
+        print("=" * 50 + "\n")
+
         # Security: Immediately wipe raw uploaded/API data so it doesn't stay on disk while idle
         purge_raw_files()
-        
+
         return quality_report
 
     except Exception as e:
@@ -148,8 +178,9 @@ def run_pipeline(start_date=None, end_date=None, source_type="api", source_url=N
         print(f"Error Type: {type(e).__name__}")
         print(f"Error Message: {str(e)}")
         traceback.print_exc()
-        sys._last_step = "Error"
+        setattr(sys, "_last_step", "Error")
         return {"status": "Error", "error": str(e), "total_records": 0, "overall_trustability": 0}
+
 
 if __name__ == "__main__":
     import argparse
@@ -160,9 +191,9 @@ if __name__ == "__main__":
     parser.add_argument("--start", help="Start date (YYYY-MM-DD)")
     parser.add_argument("--end", help="End date (YYYY-MM-DD)")
     parser.add_argument("--key", help="API authentication key/token")
-    
+
     args = parser.parse_args()
-    
+
     run_pipeline(
         start_date=args.start,
         end_date=args.end,
