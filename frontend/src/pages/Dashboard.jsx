@@ -126,7 +126,7 @@ export default function Dashboard() {
   };
 
   const handleDownloadPdf = () => {
-    downloadPropertiesPdf(rawData);
+    downloadPropertiesPdf(rawData, report);
   };
 
   const isFormValid = () => {
@@ -375,8 +375,8 @@ export default function Dashboard() {
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button type="button" className="btn-download-pdf" onClick={handleDownloadPdf}>
-                Export Quality Report (PDF)
-              </button> 
+               Download PDF
+              </button>
               <button
                 type="button"
                 className="btn-download-pdf"
