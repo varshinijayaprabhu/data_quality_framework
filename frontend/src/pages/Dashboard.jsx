@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { downloadPropertiesPdf } from "../pdfExport";
 
+import { downloadCleanedDataXlsx } from "../lib/downloadCleanedDataXlsx";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -612,7 +614,13 @@ export default function Dashboard() {
                           <span>EDA Profile</span>
                           <ExternalLink className="w-4 h-4" />
                         </button>
-                        {/* Download Quality Check Report button moved below table */}
+                        <button
+                          onClick={() => downloadCleanedDataXlsx(cleanedData)}
+                          className="flex items-center gap-2 text-sm font-semibold tracking-wide uppercase hover:text-primary transition-colors"
+                        >
+                          <span>Download XLSX</span>
+                          <Download className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
 
