@@ -1,51 +1,72 @@
-import { useState, useCallback } from 'react';
-import { processData } from '../api';
-import { buildPayload } from '../services/dashboardService';
+import { useState, useCallback } from "react";
+import { processData } from "../api";
+import { buildPayload } from "../services/dashboardService";
 
 /**
  * Custom hook for managing Dashboard state and operations.
  */
 export function useDashboard() {
-    const [report, setReport] = useState(null);
-    const [rawData, setRawData] = useState([]);
-    const [processing, setProcessing] = useState(false);
-    const [error, setError] = useState(null);
+  const [report, setReport] = useState(null);
+  const [rawReport, setRawReport] = useState(null);
+  const [cleanedReport, setCleanedReport] = useState(null);
+  const [rawData, setRawData] = useState([]);
+  const [cleanedData, setCleanedData] = useState([]);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState(null);
 
-    const executeAnalysis = useCallback(async (formState) => {
-        setError(null);
-        setProcessing(true);
-        setReport(null);
-        setRawData([]);
+  const executeAnalysis = useCallback(async (formState) => {
+    setError(null);
+    setProcessing(true);
+    setReport(null);
+    setRawReport(null);
+    setCleanedReport(null);
+    setRawData([]);
+    setCleanedData([]);
 
-        try {
-            const payload = buildPayload(formState);
-            const data = await processData(payload);
+    try {
+      const payload = buildPayload(formState);
+      const data = await processData(payload);
 
-            setReport(data.report);
-            const list = data.raw_data?.data || data.raw_data?.properties || [];
-            setRawData(Array.isArray(list) ? list : []);
+      setReport(data.report);
+      setRawReport(data.raw_report);
+      setCleanedReport(data.cleaned_report);
 
-            return data;
-        } catch (err) {
-            setError(err.message);
-            throw err;
-        } finally {
-            setProcessing(false);
-        }
-    }, []);
+      // Get raw data (before cleaning)
+      const rawList = data.raw_data?.data || data.raw_data?.properties || [];
+      setRawData(Array.isArray(rawList) ? rawList : []);
 
-    const resetDashboard = useCallback(() => {
-        setReport(null);
-        setRawData([]);
-        setError(null);
-    }, []);
+      // Get cleaned data (after remediation)
+      const cleanedList =
+        data.cleaned_data?.data || data.cleaned_data?.properties || [];
+      setCleanedData(Array.isArray(cleanedList) ? cleanedList : []);
 
-    return {
-        report,
-        rawData,
-        processing,
-        error,
-        executeAnalysis,
-        resetDashboard
-    };
+      return data;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setProcessing(false);
+    }
+  }, []);
+
+  const resetDashboard = useCallback(() => {
+    setReport(null);
+    setRawReport(null);
+    setCleanedReport(null);
+    setRawData([]);
+    setCleanedData([]);
+    setError(null);
+  }, []);
+
+  return {
+    report,
+    rawReport,
+    cleanedReport,
+    rawData,
+    cleanedData,
+    processing,
+    error,
+    executeAnalysis,
+    resetDashboard,
+  };
 }

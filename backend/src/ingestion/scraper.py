@@ -75,12 +75,19 @@ class UniversalIngestor:
             response.raise_for_status()
             content = response.json()
             
-            # API can return a list or a dict with a 'data' key
-            # Also check 'works' for OpenLibrary example
+            # API can return a list or a dict with data under various keys
+            # Check common keys: list (OpenWeatherMap), data, results, items, etc.
             if isinstance(content, list):
                 records = content
             else:
-                records = content.get("data") or content.get("works")
+                records = None
+                # Check common data array keys in order of priority
+                for key in ["list", "data", "results", "items", "records", "entries", "users", "products", "works"]:
+                    if key in content and isinstance(content[key], list):
+                        records = content[key]
+                        logger.info(f"Extracted {len(records)} records from '{key}' key")
+                        break
+                
                 if records is None:
                     # Treat the single generic JSON object as the record itself
                     records = [content]

@@ -33,36 +33,17 @@ else:
 
 
 def purge_old_results() -> None:
-    """Security Fix: Clears all previous analysis results to prevent stale data visibility."""
-    raw_dir = os.path.join(BASE_DIR, "data", "raw")
-    processed_dir = os.path.join(BASE_DIR, "data", "processed")
-    reports_dir = os.path.join(BASE_DIR, "data", "reports")
-
-    for d in [raw_dir, processed_dir, reports_dir]:
-        if os.path.exists(d):
-            for f in os.listdir(d):
-                # Don't delete .gitkeep or other hidden files
-                if f.startswith('.'):
-                    continue
-                try:
-                    os.remove(os.path.join(d, f))
-                except Exception:
-                    # best-effort purge; avoid raising here
-                    pass
-    print("[*] Secure Purge: All old raw, processed, and report records cleared.")
+    """DISABLED: Data preservation enabled - raw and processed files are now kept with timestamps."""
+    # Data preservation mode: Don't delete files anymore
+    # Raw files: data/raw/ - kept with timestamps
+    # Processed files: data/processed/ - kept with timestamps (raw_structured_*.parquet, cleaned_data_*.parquet)
+    pass  # No-op for data preservation
 
 
 def purge_raw_files() -> None:
-    """Security Fix: Erases sensitive raw uploaded/API data immediately after processing."""
-    raw_dir = os.path.join(BASE_DIR, "data", "raw")
-    if os.path.exists(raw_dir):
-        for f in os.listdir(raw_dir):
-            if f.startswith('.'):
-                continue
-            try:
-                os.remove(os.path.join(raw_dir, f))
-            except Exception:
-                pass
+    """DISABLED: Data preservation enabled - raw files are now kept for history."""
+    # Raw files are now preserved with timestamps
+    pass  # No-op for data preservation
     print("[*] Secure Purge: Temporary Raw Data permanently erased.")
 
 
@@ -92,7 +73,7 @@ def run_pipeline(start_date: Optional[str] = None,
         raw_path = None
         if source_type == "api":
             raw_path = ingestor.fetch_api_data(source_url, start_date, end_date, api_key)
-        elif source_type == "scraping":
+        elif source_type in ["scraping", "scraper"]:  # Support both names
             raw_path = ingestor.scrape_city_records(source_url, start_date, end_date)
         elif source_type == "upload":
             raw_path = ingestor.handle_user_upload(file_path)

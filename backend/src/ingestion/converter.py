@@ -78,8 +78,19 @@ class DataConverter:
             logger.error(f"API JSON Parsing Error: {e}")
             return []
         
-        # Assume 'data' or 'properties' key might contain the list
-        records = data.get("data") or data.get("properties") or data
+        # Check common keys that contain the actual data array
+        # OpenWeatherMap uses "list", others use "data", "results", "items", etc.
+        records = None
+        for key in ["data", "list", "results", "items", "records", "entries", "users", "products", "properties"]:
+            if isinstance(data, dict) and key in data and isinstance(data[key], list):
+                records = data[key]
+                logger.info(f"Found data array under '{key}' key with {len(records)} items")
+                break
+        
+        # If no known key found, use the data directly
+        if records is None:
+            records = data
+            
         if not isinstance(records, list): 
             records = [records]
 
@@ -93,6 +104,7 @@ class DataConverter:
             entry["source"] = "API_Source"
             entry["ingested_at"] = datetime.now().isoformat()
             standardized.append(entry)
+        return standardized
         return standardized
 
     @_fetch_file("json_upload", "json")
@@ -409,54 +421,125 @@ class DataConverter:
 
     @_fetch_file("web_scrape", "html")
     def parse_city_html(self, file_path):
-        """Standardized HTML Table Parser: Extracts data from all tables on the page."""
-        logger.info(f"Parsing Dynamic HTML (Standardized): {os.path.basename(file_path)}...")
+        """Universal HTML Parser: Supports tables, divs, articles, cards, and lists."""
+        logger.info(f"Parsing Dynamic HTML (Universal): {os.path.basename(file_path)}...")
         try:
             with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                 soup = BeautifulSoup(f.read(), "html.parser")
             
+            # Step 1: Try tables first
             all_tables = soup.find_all("table")
-            if not all_tables:
-                return self._parse_city_html_fallback(soup)
+            if all_tables:
+                standardized = []
+                for table in all_tables:
+                    rows = table.find_all("tr")
+                    if not rows: continue
 
-            standardized = []
-            for table in all_tables:
-                rows = table.find_all("tr")
-                if not rows: continue
-
-                header_row = table.find("thead").find("tr") if table.find("thead") else rows[0]
-                headers = [th.get_text(strip=True) for th in header_row.find_all(["th", "td"])]
-                
-                data_rows = rows[1:] if not table.find("thead") else rows
-                
-                for row in data_rows:
-                    cols = row.find_all(["td", "th"])
-                    if not cols or len(cols) == 0: continue
+                    header_row = table.find("thead").find("tr") if table.find("thead") else rows[0]
+                    headers = [th.get_text(strip=True) for th in header_row.find_all(["th", "td"])]
                     
+                    data_rows = rows[1:] if not table.find("thead") else rows
+                    
+                    for row in data_rows:
+                        cols = row.find_all(["td", "th"])
+                        if not cols or len(cols) == 0: continue
+                        
+                        entry = {}
+                        for i in range(min(len(headers), len(cols))):
+                            key = headers[i] if headers[i] else f"Col_{i}"
+                            entry[key] = cols[i].get_text(strip=True)
+                        
+                        if entry and any(entry.values()):
+                            entry["source"] = "Web_Scrape"
+                            entry["ingested_at"] = datetime.now().isoformat()
+                            standardized.append(entry)
+                
+                if standardized:
+                    logger.info(f"Extracted {len(standardized)} records from tables")
+                    return standardized[:100]
+            
+            # Step 2: Try repeating div/article/section structures (cards, quotes, etc.)
+            standardized = self._parse_repeating_divs(soup)
+            if standardized:
+                logger.info(f"Extracted {len(standardized)} records from div structures")
+                return standardized[:100]
+            
+            # Step 3: Fallback to lists and generic extraction
+            return self._parse_city_html_fallback(soup)
+                
+        except Exception as e:
+            logger.error(f"HTML Parsing Error: {e}")
+            return []
+
+    def _parse_repeating_divs(self, soup):
+        """Detect and extract from repeating div/article/section structures (cards, quotes, etc.)"""
+        standardized = []
+        
+        # Look for common repeating patterns
+        patterns = [
+            ("div", "quote"),      # quotes.toscrape.com
+            ("div", "card"),       # card-based layouts
+            ("div", "item"),       # generic items
+            ("article", None),     # article tags
+            ("section", None),     # section tags
+            ("div", "product"),    # e-commerce
+            ("div", "post"),       # blog posts
+            ("div", "result"),     # search results
+        ]
+        
+        for tag, class_hint in patterns:
+            containers = []
+            
+            if class_hint:
+                # Find divs with specific class
+                containers = soup.find_all(tag, class_=lambda x: x and class_hint.lower() in x.lower())
+            else:
+                # Find by tag type that appear multiple times
+                candidates = soup.find_all(tag)
+                if len(candidates) >= 5:  # Only if there are multiple occurrences
+                    containers = candidates
+            
+            if len(containers) >= 3:  # Need at least 3 repeated items
+                for container in containers:
                     entry = {}
-                    for i in range(min(len(headers), len(cols))):
-                        key = headers[i] if headers[i] else f"Col_{i}"
-                        entry[key] = cols[i].get_text(strip=True)
+                    
+                    # Extract text from all text nodes and common elements
+                    for elem in container.find_all(['p', 'span', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'em']):
+                        text = elem.get_text(strip=True)
+                        if text and len(text) > 2:  # Skip very short text
+                            # Use tag name or class as key, fallback to generic
+                            key = elem.get('class')
+                            if key:
+                                key = key[0] if isinstance(key, list) else key
+                                key = key.replace('-', '_').replace(' ', '_')
+                            else:
+                                key = elem.name
+                            
+                            # Avoid duplicate keys
+                            if key not in entry:
+                                entry[key] = text
+                    
+                    # Also extract data attributes
+                    for attr_name in container.attrs:
+                        if attr_name.startswith('data-'):
+                            entry[attr_name] = container.attrs[attr_name]
                     
                     if entry and any(entry.values()):
                         entry["source"] = "Web_Scrape"
                         entry["ingested_at"] = datetime.now().isoformat()
                         standardized.append(entry)
-            
-            if not standardized:
-                return self._parse_city_html_fallback(soup)
                 
-            return standardized[:100]
-        except Exception as e:
-            logger.error(f"HTML Parsing Error: {e}")
-            return []
+                if standardized:
+                    return standardized
+        
+        return standardized
 
     def _parse_city_html_fallback(self, soup):
-        logger.info("No tables found, checking for list items (li)...")
+        logger.info("No tables/divs found, checking for list items (li)...")
         standardized = []
         lists = soup.find_all(["ul", "ol"])
         for lst in lists:
-            items = lst.find_all("li")
+            items = lst.find_all("li", recursive=False)  # Only direct children
             if len(items) < 5: continue
             for li in items:
                 text = li.get_text(strip=True)
@@ -466,6 +549,22 @@ class DataConverter:
                         "source": "Web_Scrape",
                         "ingested_at": datetime.now().isoformat()
                     })
+        
+        if standardized:
+            return standardized[:100]
+        
+        # Final fallback: extract all paragraphs
+        logger.info("No lists found, extracting all paragraphs...")
+        paragraphs = soup.find_all("p")
+        for p in paragraphs[:50]:
+            text = p.get_text(strip=True)
+            if text and len(text) > 10:
+                standardized.append({
+                    "Content": text,
+                    "source": "Web_Scrape",
+                    "ingested_at": datetime.now().isoformat()
+                })
+        
         return standardized[:100]
 
     @_fetch_file("user_upload", "csv")
@@ -646,15 +745,18 @@ class DataConverter:
         # Security/Format Fix: Force all heterogeneous Excel/JSON/API native objects
         df = df.astype(str)
         
-        output_path = os.path.join(self.output_dir, "raw_structured.parquet")
-        df.to_parquet(output_path, index=False)
+        # Generate timestamped filename for data preservation
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamped_path = os.path.join(self.output_dir, f"raw_structured_{timestamp}.parquet")
+        df.to_parquet(timestamped_path, index=False)
+        logger.info(f"Archived raw data: {timestamped_path}")
         
-        csv_path = os.path.join(self.output_dir, "raw_structured.csv")
-        df.to_csv(csv_path, index=False)
+        # Also save as "latest" for the app to use
+        latest_path = os.path.join(self.output_dir, "raw_structured.parquet")
+        df.to_parquet(latest_path, index=False)
         
-        logger.info(f"Success! Unified Parquet Hub created at: {output_path}")
-        logger.info(f"Secondary CSV Export available at: {csv_path}")
-        return output_path
+        logger.info(f"Success! Unified Parquet Hub created at: {latest_path}")
+        return latest_path
 
 if __name__ == "__main__":
     converter = DataConverter()

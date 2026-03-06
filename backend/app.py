@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import sys
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from main import run_pipeline
@@ -45,17 +46,31 @@ FRONTEND_DIR = os.path.join(os.path.dirname(BASE_DIR), "frontend", "dist")
 if os.path.exists(FRONTEND_DIR):
     app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIR, "assets")), name="assets")
 
+def validate_source_url(url: str) -> bool:
+    """Security check: Only allow HTTPS URLs to prevent SSRF and protocol attacks."""
+    if not url:
+        return True  # Allow None/empty for file uploads
+    
+    try:
+        parsed = urlparse(url)
+        # Only allow HTTPS protocol
+        if parsed.scheme != 'https':
+            return False
+        return True
+    except Exception:
+        return False
+
 def get_latest_raw_data():
-    """Returns the most recent raw data by reading the Unified Parquet Hub."""
+    """Returns the most recent data - prefers cleaned data if available."""
     import pandas as pd
     
-    hub_path = os.path.join(PROCESSED_DIR, "raw_structured.parquet")
-    
-    if not os.path.exists(hub_path):
-        if os.path.exists(CLEANED_PARQUET):
-            hub_path = CLEANED_PARQUET
-        else:
-            return {"data": []}
+    # Prefer cleaned data if it exists (after remediation ran)
+    if os.path.exists(CLEANED_PARQUET):
+        hub_path = CLEANED_PARQUET
+    elif os.path.exists(os.path.join(PROCESSED_DIR, "raw_structured.parquet")):
+        hub_path = os.path.join(PROCESSED_DIR, "raw_structured.parquet")
+    else:
+        return {"data": []}
             
     print(f"[*] Serving dataset preview from: {hub_path}")
     
@@ -63,8 +78,12 @@ def get_latest_raw_data():
         df = pd.read_parquet(hub_path)
         if len(df) > 100: 
             df = df.head(100)
-            
+        
+        # Handle BOTH NaN and empty strings as missing
         df = df.fillna("—")
+        # Also replace empty strings and whitespace-only strings
+        for col in df.select_dtypes(include=['object', 'string']).columns:
+            df[col] = df[col].apply(lambda x: "—" if isinstance(x, str) and x.strip() == "" else x)
         
         import json
         clean_records = json.loads(df.to_json(orient="records"))
@@ -73,6 +92,48 @@ def get_latest_raw_data():
     except Exception as e:
         print(f"[!] Error reading parquet hub for preview: {e}")
         return {"data": []}
+
+def get_raw_and_cleaned_data():
+    """Returns both raw_structured and cleaned_data separately."""
+    import pandas as pd
+    import json
+    
+    result = {
+        "raw_data": [],
+        "cleaned_data": []
+    }
+    
+    RAW_STRUCTURED = os.path.join(PROCESSED_DIR, "raw_structured.parquet")
+    
+    # Get raw_structured data
+    if os.path.exists(RAW_STRUCTURED):
+        try:
+            df = pd.read_parquet(RAW_STRUCTURED)
+            if len(df) > 100:
+                df = df.head(100)
+            df = df.fillna("—")
+            for col in df.select_dtypes(include=['object', 'string']).columns:
+                df[col] = df[col].apply(lambda x: "—" if isinstance(x, str) and x.strip() == "" else x)
+            result["raw_data"] = json.loads(df.to_json(orient="records"))
+            print(f"[*] Raw data: {len(result['raw_data'])} records")
+        except Exception as e:
+            print(f"[!] Error reading raw_structured: {e}")
+    
+    # Get cleaned_data
+    if os.path.exists(CLEANED_PARQUET):
+        try:
+            df = pd.read_parquet(CLEANED_PARQUET)
+            if len(df) > 100:
+                df = df.head(100)
+            df = df.fillna("—")
+            for col in df.select_dtypes(include=['object', 'string']).columns:
+                df[col] = df[col].apply(lambda x: "—" if isinstance(x, str) and x.strip() == "" else x)
+            result["cleaned_data"] = json.loads(df.to_json(orient="records"))
+            print(f"[*] Cleaned data: {len(result['cleaned_data'])} records")
+        except Exception as e:
+            print(f"[!] Error reading cleaned_data: {e}")
+    
+    return result
 
 def get_report_json():
     """Run validator on cleaned_data.csv and return report as dict, or None if no data."""
@@ -84,6 +145,40 @@ def get_report_json():
     except Exception as e:
         print(f"Validation Error: {e}")
         return {"error": str(e), "status": "Error", "total_records": 0, "overall_trustability": 0, "dimensions": {}}
+
+def get_both_reports():
+    """Run validator on both raw_structured and cleaned_data, return both reports."""
+    from qa.validator import DataValidator
+    
+    RAW_STRUCTURED = os.path.join(PROCESSED_DIR, "raw_structured.parquet")
+    
+    raw_report = None
+    cleaned_report = None
+    
+    validator = DataValidator()
+    
+    # Validate raw data
+    if os.path.exists(RAW_STRUCTURED):
+        try:
+            print("[*] Running validation on RAW data...")
+            raw_report = validator.validate(RAW_STRUCTURED)
+        except Exception as e:
+            print(f"Raw Validation Error: {e}")
+            raw_report = {"error": str(e), "status": "Error", "total_records": 0, "overall_trustability": 0, "dimensions": {}}
+    
+    # Validate cleaned data
+    if os.path.exists(CLEANED_PARQUET):
+        try:
+            print("[*] Running validation on CLEANED data...")
+            cleaned_report = validator.validate(CLEANED_PARQUET)
+        except Exception as e:
+            print(f"Cleaned Validation Error: {e}")
+            cleaned_report = {"error": str(e), "status": "Error", "total_records": 0, "overall_trustability": 0, "dimensions": {}}
+    
+    return {
+        "raw_report": raw_report,
+        "cleaned_report": cleaned_report
+    }
 
 @app.get("/api/report", summary="Get Latest Quality Report")
 async def api_report():
@@ -126,6 +221,17 @@ async def api_process(
 
     print(f"API trigger: Source={source_type}, URL={source_url}, Dates={start_date} to {end_date}")
     
+    # Security: Validate URL for API/scraper sources
+    if source_type in ["api", "scraper"] and source_url:
+        if not validate_source_url(source_url):
+            return JSONResponse(
+                status_code=400, 
+                content={
+                    "success": False, 
+                    "error": "Security Error: Only HTTPS URLs are allowed. HTTP and other protocols are blocked for security."
+                }
+            )
+    
     try:
         report = run_pipeline(
             start_date=start_date, 
@@ -143,14 +249,19 @@ async def api_process(
             is_success = False
 
         if is_success and status != "No Data Found for this period":
-            raw_data = get_latest_raw_data()
+            both_data = get_raw_and_cleaned_data()
+            both_reports = get_both_reports()
         else:
-            raw_data = {"data": []}
+            both_data = {"raw_data": [], "cleaned_data": []}
+            both_reports = {"raw_report": None, "cleaned_report": None}
         
         response_data = {
             "success": is_success,
-            "report": report, 
-            "raw_data": raw_data,
+            "report": report,  # Keep for backward compatibility (cleaned report)
+            "raw_report": both_reports.get("raw_report"),
+            "cleaned_report": both_reports.get("cleaned_report"),
+            "raw_data": {"data": both_data["raw_data"]},
+            "cleaned_data": {"data": both_data["cleaned_data"]},
             "error": report.get("error") if not is_success else None
         }
         
@@ -175,31 +286,54 @@ async def index():
         return FileResponse(html_path)
     raise HTTPException(status_code=404, detail="Legacy dashboard not found")
 
-@app.get("/api/eda-profile", summary="Serve EDA Profile Report")
+
+# EDA Profile for Cleaned Data
+@app.get("/api/eda-profile", summary="Serve EDA Profile Report (Cleaned Data)")
 async def get_eda_profile():
     profile_path = os.path.join(PROCESSED_DIR, "eda_profile.html")
-
-
     if os.path.exists(profile_path):
         return FileResponse(profile_path, media_type="text/html")
-
-
     if os.path.exists(CLEANED_PARQUET):
         try:
             import pandas as pd
             from reporting.profiler import DataProfiler
-
-            print("[*] EDA Profile not found — generating on-the-fly...")
+            print("[*] Cleaned EDA Profile not found — generating on-the-fly...")
             df = pd.read_parquet(CLEANED_PARQUET)
             profiler = DataProfiler()
-            result = profiler.generate(df, title="Gesix EDA Profile")
+            result = profiler.generate(df, title="Gesix EDA Profile (Cleaned Data)")
             if result and os.path.exists(profile_path):
                 return FileResponse(profile_path, media_type="text/html")
         except Exception as e:
             print(f"[!] On-the-fly EDA generation failed: {e}")
             raise HTTPException(status_code=500, detail=f"EDA Profile generation failed: {str(e)}")
-
     raise HTTPException(status_code=404, detail="No cleaned data available. Run an analysis first.")
+
+# EDA Profile for Raw Data
+@app.get("/api/eda-profile-raw", summary="Serve EDA Profile Report (Raw Data)")
+async def get_eda_profile_raw():
+    raw_profile_path = os.path.join(PROCESSED_DIR, "eda_profile_raw.html")
+    raw_parquet = os.path.join(PROCESSED_DIR, "raw_structured.parquet")
+    if os.path.exists(raw_profile_path):
+        return FileResponse(raw_profile_path, media_type="text/html")
+    if os.path.exists(raw_parquet):
+        try:
+            import pandas as pd
+            from reporting.profiler import DataProfiler
+            print("[*] Raw EDA Profile not found — generating on-the-fly...")
+            df = pd.read_parquet(raw_parquet)
+            profiler = DataProfiler()
+            # Save as eda_profile_raw.html
+            result = profiler.generate(df, title="Gesix EDA Profile (Raw Data)")
+            # Rename/move output if needed
+            default_profile_path = os.path.join(PROCESSED_DIR, "eda_profile.html")
+            if result == default_profile_path and os.path.exists(default_profile_path):
+                os.rename(default_profile_path, raw_profile_path)
+            if os.path.exists(raw_profile_path):
+                return FileResponse(raw_profile_path, media_type="text/html")
+        except Exception as e:
+            print(f"[!] On-the-fly RAW EDA generation failed: {e}")
+            raise HTTPException(status_code=500, detail=f"Raw EDA Profile generation failed: {str(e)}")
+    raise HTTPException(status_code=404, detail="No raw data available. Run an analysis first.")
 
 @app.get("/{path:path}", include_in_schema=False)
 async def catch_all(path: str):
