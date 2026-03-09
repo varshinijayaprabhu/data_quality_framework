@@ -7,7 +7,7 @@ import Navbar from './components/Navbar';
 
 const App = () => {
   return (
-    <ThemeProvider defaultTheme="light" storageKey="gesix-ui-theme">
+    <ThemeProvider defaultTheme="light" storageKey="dqt-ui-theme">
       <BrowserRouter>
         <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/20">
           <Navbar />

@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI):
     print("[*] Shutdown: Database connection pool closed.")
 
 app = FastAPI(
-    title="Gesix Data Quality API",
+    title="Data Quality and Trustability API",
     description="The central API for Ingestion, Validation, and Remediation. Features auto-generated Swagger documentation.",
     version="1.0.0",
     lifespan=lifespan
@@ -530,7 +530,7 @@ async def send_analysis_id(req: EmailRequest):
     html_body = f"""
     <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #f8f9fa; border-radius: 16px; padding: 40px 32px; border: 1px solid #e9ecef;">
         <div style="text-align: center; margin-bottom: 24px;">
-            <h2 style="color: #1a1a2e; font-size: 22px; margin: 0 0 4px 0;">Gesix Data Quality</h2>
+            <h2 style="color: #1a1a2e; font-size: 22px; margin: 0 0 4px 0;">Data Quality and Trustability</h2>
             <p style="color: #6c757d; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin: 0;">Analysis ID Receipt</p>
         </div>
         <div style="background: #ffffff; border-radius: 12px; padding: 24px; border: 2px solid #dee2e6; text-align: center; margin-bottom: 20px;">
@@ -538,17 +538,17 @@ async def send_analysis_id(req: EmailRequest):
             <p style="font-family: 'Courier New', monospace; font-size: 18px; font-weight: bold; color: #1a1a2e; background: #f1f3f5; padding: 14px 16px; border-radius: 8px; margin: 0; word-break: break-all; border: 1px solid #dee2e6;">{req.analysis_id}</p>
         </div>
         <div style="background: #fff3cd; border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; border: 1px solid #ffc107;">
-            <p style="color: #664d03; font-size: 13px; margin: 0;"><strong>⏳ Valid for 7 days.</strong> Use this ID on the Gesix Dashboard to retrieve your report.</p>
+            <p style="color: #664d03; font-size: 13px; margin: 0;"><strong>⏳ Valid for 7 days.</strong> Use this ID on the Dashboard to retrieve your report.</p>
         </div>
-        <p style="color: #adb5bd; font-size: 11px; text-align: center; margin: 0;">This is an automated message from Gesix Data Quality Platform.</p>
+        <p style="color: #adb5bd; font-size: 11px; text-align: center; margin: 0;">This is an automated message from the Data Quality Platform.</p>
     </div>
     """
 
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"Your Gesix Analysis ID"
+    msg["Subject"] = f"Your Analysis ID"
     msg["From"] = smtp_email
     msg["To"] = req.email
-    msg.attach(MIMEText(f"Your Gesix Analysis ID: {req.analysis_id}\n\nUse this ID on the dashboard to retrieve your report. Valid for 7 days.", "plain"))
+    msg.attach(MIMEText(f"Your Analysis ID: {req.analysis_id}\n\nUse this ID on the dashboard to retrieve your report. Valid for 7 days.", "plain"))
     msg.attach(MIMEText(html_body, "html"))
 
     try:
@@ -638,7 +638,7 @@ if __name__ == "__main__":
     host = os.environ.get("HOST", "0.0.0.0")
 
     print("\n" + "=" * 50)
-    print(f"Gesix Data Quality Production Server (FastAPI)")
+    print(f"Data Quality and Trustability Production Server")
     print(f"API Swagger UI: http://localhost:{port}/docs")
     print(f"Frontend App:   http://localhost:{port}")
     print("=" * 50 + "\n")

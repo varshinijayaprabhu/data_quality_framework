@@ -25,7 +25,7 @@ class DataProfiler:
         workspace = get_workspace_dir()
         self.output_dir = workspace["processed"]
 
-    def generate(self, df: pd.DataFrame, title: str = "Gesix EDA Profile") -> str | None:
+    def generate(self, df: pd.DataFrame, title: str = "Data Quality Profile") -> str | None:
         """
         Runs ydata-profiling on the supplied DataFrame and saves an HTML report.
 

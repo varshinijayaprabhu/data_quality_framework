@@ -1,0 +1,7 @@
+﻿
+C:\Users\Varshini J\Desktop\project 3 - gesix solutions\frontend\src\pages\Dashboard.jsx
+  172:14  error  'err' is defined but never used   no-unused-vars
+  289:53  error  'Icon' is defined but never used  no-unused-vars
+
+Γ£û 2 problems (2 errors, 0 warnings)
+

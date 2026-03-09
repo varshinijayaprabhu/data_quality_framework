@@ -196,7 +196,7 @@ def run_pipeline(start_date: Optional[str] = None,
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Gesix Data Quality Pipeline")
+    parser = argparse.ArgumentParser(description="Data Quality and Trustability Pipeline")
     parser.add_argument("--source", default="api", help="Source type (api, scraping, upload, etc.)")
     parser.add_argument("--url", help="Source URL for API or Scraping")
     parser.add_argument("--file", help="Local file path for uploads")

@@ -12,7 +12,7 @@ export default function Navbar() {
             to="/"
             className="flex items-center gap-2 font-serif text-lg md:text-xl font-medium tracking-tight"
           >
-            <span>Gesix</span>
+            <span>Data Quality and Trustability Framework</span>
           </Link>
         </div>
 

@@ -65,9 +65,9 @@ class DataCleaner:
             return None
         return pd.read_parquet(self.input_file)
 
-    # =========================================================================
+
     # STEP 1: EMBEDDED HEADER & LABEL DETECTION
-    # =========================================================================
+
     
     def _is_embedded_header_row(self, row, column_names):
         """
@@ -148,9 +148,9 @@ class DataCleaner:
         logger.info(f"Header cleanup: {initial_len} → {len(df)} rows.")
         return df.reset_index(drop=True)
 
-    # =========================================================================
+
     # STEP 2: TYPE INFERENCE & COERCION
-    # =========================================================================
+ 
     
     def infer_and_cast_types(self, df):
         """
@@ -201,14 +201,14 @@ class DataCleaner:
                     pass
             
             # Otherwise keep as string/categorical
-            df[col] = df[col].astype(str).str.strip()
+            df[col] = df[col].where(df[col].isna(), df[col].astype(str).str.strip())
             df[col] = df[col].replace({'': np.nan, 'nan': np.nan, 'None': np.nan, 'NaN': np.nan, '—': np.nan})
         
         return df
 
-    # =========================================================================
+
     # STEP 3: MISSING VALUE IMPUTATION (ML-GRADE)
-    # =========================================================================
+
     
     def _detect_distribution(self, series):
         """
@@ -340,9 +340,8 @@ class DataCleaner:
         
         return df
 
-    # =========================================================================
+ 
     # STEP 4: OUTLIER DETECTION & HANDLING
-    # =========================================================================
     
     def handle_outliers(self, df, method='cap'):
         """
@@ -395,10 +394,10 @@ class DataCleaner:
         
         return df
 
-    # =========================================================================
+
     # STEP 5: STRING NORMALIZATION & CLEANUP
-    # =========================================================================
-    
+
+        
     def normalize_strings(self, df):
         """
         Standardizes string columns:
@@ -426,13 +425,11 @@ class DataCleaner:
             original_nulls = df[col].isna()
             
             # Convert to string and strip whitespace (only for non-null values)
-            df[col] = df[col].fillna('__TEMP_NULL__').astype(str).str.strip()
+            df[col] = df[col].where(df[col].isna(), df[col].astype(str).str.strip())
             
             # Replace null-like patterns with actual NaN (including empty strings after strip)
-            df[col] = df[col].apply(lambda x: np.nan if x in null_patterns or x == '__TEMP_NULL__' or x.strip() == '' else x)
-            
-            # Restore original nulls that might have been lost
-            df.loc[original_nulls, col] = np.nan
+            df[col] = df[col].apply(lambda x: np.nan if x in null_patterns or (pd.notna(x) and str(x).strip() == '') else x)
+        
             
             # Count conversions
             new_nulls = df[col].isna().sum()
@@ -458,9 +455,9 @@ class DataCleaner:
         
         return df
 
-    # =========================================================================
+
     # STEP 5b: BLANK ROW REMOVAL
-    # =========================================================================
+
     
     def remove_blank_rows(self, df):
         """
@@ -496,10 +493,9 @@ class DataCleaner:
         
         return df
 
-    # =========================================================================
     # STEP 5c: FORMAT STANDARDIZATION
-    # =========================================================================
-    
+
+
     def standardize_formats(self, df):
         """
         Detects dominant format in each column and standardizes values.
@@ -628,9 +624,9 @@ class DataCleaner:
         
         return df
 
-    # =========================================================================
+
     # STEP 5d: FIX RULE VIOLATIONS
-    # =========================================================================
+    
     
     def fix_rule_violations(self, df):
         """
@@ -933,9 +929,9 @@ class DataCleaner:
         except Exception:
             return None
 
-    # =========================================================================
+    
     # STEP 6: DEDUPLICATION
-    # =========================================================================
+    
     
     def deduplicate(self, df):
         """
@@ -954,9 +950,9 @@ class DataCleaner:
         
         return df.reset_index(drop=True)
 
-    # =========================================================================
+    
     # STEP 7: CATEGORICAL ENCODING
-    # =========================================================================
+    
     
     def encode_categorical(self, df):
         """
@@ -1014,9 +1010,9 @@ class DataCleaner:
         
         return df
 
-    # =========================================================================
+    
     # STEP 8: FEATURE SCALING
-    # =========================================================================
+    
     
     def scale_features(self, df, method='standard'):
         """
@@ -1075,9 +1071,9 @@ class DataCleaner:
         
         return df
 
-    # =========================================================================
+    
     # STEP 9: SKEWNESS CORRECTION
-    # =========================================================================
+
     
     def correct_skewness(self, df, threshold=1.0):
         """
@@ -1127,9 +1123,9 @@ class DataCleaner:
         
         return df
 
-    # =========================================================================
+    
     # MAIN PIPELINE
-    # =========================================================================
+    
 
     def run_remediation(self, outlier_method='cap', scale_method=None, encode_categorical=False, correct_skew=False):
         """

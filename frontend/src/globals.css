@@ -5,8 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Anthropic Sans", BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-serif: ui-serif, Tiermina, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-sans: "Inter", "Anthropic Sans", BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-serif: "Outfit", ui-serif, Tiermina, Georgia, Cambria, "Times New Roman", Times, serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -36,61 +36,93 @@
   --color-slate-purple-foreground: var(--slate-purple-foreground);
   --color-gold: var(--gold);
   --color-gold-foreground: var(--gold-foreground);
+  --color-glass: var(--glass);
+  --color-glass-border: var(--glass-border);
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: #F2EFE9;
-  --foreground: #252627;
-  --card: #F2EFE9;
-  --card-foreground: #252627;
-  --popover: #F2EFE9;
-  --popover-foreground: #252627;
-  --primary: #904E55;
-  --primary-foreground: #F2EFE9;
-  --secondary: #BFB48F;
-  --secondary-foreground: #252627;
-  --muted: #BFB48F;
-  --muted-foreground: #564E58;
-  --accent: #BFB48F;
-  --accent-foreground: #252627;
-  --destructive: #904E55;
-  --border: #BFB48F;
-  --input: #BFB48F;
-  --ring: #904E55;
-  --slate-purple: #564E58;
-  --slate-purple-foreground: #F2EFE9;
-  --gold: #BFB48F;
-  --gold-foreground: #564E58;
-  --stat-card: var(--gold);
-  --stat-card-foreground: var(--gold-foreground);
+  --radius: 0.75rem;
+  /* Light Mode Palette - Crisp, Professional, Dynamic */
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  
+  /* Deep Midnight Blue for Trust/Authority */
+  --primary: #1e3a8a; 
+  --primary-foreground: #ffffff;
+  
+  /* Soft Ice Blue for backgrounds/accents */
+  --secondary: #e0f2fe;
+  --secondary-foreground: #0369a1;
+  
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  
+  --accent: #f0fdf4;
+  --accent-foreground: #166534;
+  
+  --destructive: #ef4444;
+  
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #3b82f6;
+  
+  /* Refined Gold for CTAs and highlights */
+  --gold: #f59e0b;
+  --gold-foreground: #ffffff;
+  
+  --glass: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.5);
+
+  --stat-card: #ffffff;
+  --stat-card-foreground: #0f172a;
 }
 
 .dark {
-  --background: #252627;
-  --foreground: #F2EFE9;
-  --card: #252627;
-  --card-foreground: #F2EFE9;
-  --popover: #252627;
-  --popover-foreground: #F2EFE9;
-  --primary: #904E55;
-  --primary-foreground: #F2EFE9;
-  --secondary: #564E58;
-  --secondary-foreground: #F2EFE9;
-  --muted: #564E58;
-  --muted-foreground: #BFB48F;
-  --accent: #564E58;
-  --accent-foreground: #F2EFE9;
-  --destructive: #904E55;
-  --border: #564E58;
-  --input: #564E58;
-  --ring: #904E55;
-  --slate-purple: #564E58;
-  --slate-purple-foreground: #F2EFE9;
-  --gold: #BFB48F;
-  --gold-foreground: #564E58;
-  --stat-card: #564E58;
-  --stat-card-foreground: #F2EFE9;
+  /* Dark Mode Palette - Deep, Sleek, Glowing */
+  --background: #020617;
+  --foreground: #f8fafc;
+  
+  --card: #0f172a;
+  --card-foreground: #f8fafc;
+  
+  --popover: #0f172a;
+  --popover-foreground: #f8fafc;
+  
+  /* Vibrant Cyan/Blue for modern tech feel */
+  --primary: #38bdf8;
+  --primary-foreground: #020617;
+  
+  /* Deep Slate for depth */
+  --secondary: #1e293b;
+  --secondary-foreground: #e2e8f0;
+  
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  
+  --accent: #0f172a;
+  --accent-foreground: #f8fafc;
+  
+  --destructive: #f87171;
+  
+  --border: #334155;
+  --input: #334155;
+  --ring: #38bdf8;
+  
+  /* Glowing Gold */
+  --gold: #fbbf24;
+  --gold-foreground: #451a03;
+  
+  --glass: rgba(15, 23, 42, 0.7);
+  --glass-border: rgba(51, 65, 85, 0.5);
+
+  --stat-card: #0f172a;
+  --stat-card-foreground: #f8fafc;
 }
 
 @layer base {
@@ -99,42 +131,58 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground font-sans antialiased selection:bg-primary/30;
   }
 }
 
 @layer components {
-
-  /* Shared button base */
-  .btn-base {
-    @apply flex items-center justify-center rounded-full text-base font-medium shadow-sm transition-all duration-300 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+  /* Dynamic Glassmorphism Surface */
+  .surface-glass {
+    @apply bg-[var(--glass)] backdrop-blur-xl border border-[var(--glass-border)] shadow-sm;
   }
 
-  /* Coloured variants — inline btn-base (Tailwind v4 can't @apply custom classes) */
+  /* Shared button base with micro-animations - Inlined for Tailwind v4 compatibility */
+  .btn-primary {
+    @apply flex items-center justify-center rounded-xl text-base font-semibold shadow-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 overflow-hidden relative bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-primary/20 hover:shadow-lg;
+  }
+
   .btn-gold {
-    @apply flex items-center justify-center rounded-full text-base font-medium shadow-sm transition-all duration-300 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-gold text-gold-foreground hover:bg-gold/80 hover:shadow-gold/30;
+    @apply flex items-center justify-center rounded-xl text-base font-semibold shadow-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 overflow-hidden relative bg-gold text-gold-foreground hover:bg-gold/90 hover:shadow-gold/30 hover:shadow-lg;
   }
 
-  .btn-slate {
-    @apply flex items-center justify-center rounded-full text-base font-medium shadow-sm transition-all duration-300 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-slate-purple text-slate-purple-foreground hover:bg-slate-purple/80 hover:shadow-slate-purple/30;
+  .btn-secondary {
+    @apply flex items-center justify-center rounded-xl text-base font-semibold shadow-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 overflow-hidden relative bg-secondary text-secondary-foreground hover:bg-secondary/80;
   }
 
-  /* Outline keeps its own shape */
   .btn-outline {
-    @apply flex items-center justify-start text-left font-normal border-0 border-b-2 border-primary/60 rounded-full px-5 py-3 h-auto shadow-sm focus-visible:ring-2 focus-visible:ring-primary transition-colors bg-secondary/10 hover:bg-secondary/20 hover:text-foreground;
+    @apply flex items-center justify-start text-left font-normal border-2 border-border/60 rounded-xl px-5 py-3 h-auto shadow-sm focus-visible:ring-2 focus-visible:ring-primary transition-all duration-300 bg-transparent hover:border-primary/50 hover:bg-primary/5 hover:text-foreground active:scale-[0.98];
   }
 
-  /* Form */
+  /* Premium Form Elements */
   .input-field {
-    @apply w-full text-base border border-border/60 rounded-xl px-4 py-3 h-auto shadow-sm focus-visible:ring-2 focus-visible:ring-secondary transition-colors bg-secondary/10;
+    @apply w-full text-base border-2 border-border/80 rounded-xl px-4 py-3 h-auto shadow-sm focus-visible:ring-2 focus-visible:border-primary focus-visible:ring-primary/20 transition-all duration-300 bg-background hover:border-border;
   }
 
   .form-label {
-    @apply block mb-3 text-xs uppercase tracking-widest font-bold text-muted-foreground;
+    @apply block mb-2 text-xs uppercase tracking-[0.15em] font-bold text-muted-foreground;
   }
 
-  /* Cards */
+  /* Elevated Stats Cards */
   .card-stat {
-    @apply flex flex-col justify-between h-full p-5 md:p-6 rounded-2xl bg-[var(--stat-card)] text-[var(--stat-card-foreground)] transition-all duration-500 hover:shadow-lg hover:scale-[1.02];
+    @apply flex flex-col justify-between h-full p-6 md:p-8 rounded-3xl bg-card border border-border shadow-sm transition-all duration-500 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 relative overflow-hidden;
+  }
+  
+  .card-stat::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity duration-500;
+  }
+  
+  .card-stat:hover::before {
+    @apply opacity-100;
+  }
+
+  /* Beautiful Gradients */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-indigo-500 dark:from-primary dark:to-cyan-400;
   }
 }

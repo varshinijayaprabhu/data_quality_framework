@@ -58,7 +58,7 @@ class DataValidator:
 
             dataset = ctx.get_validator(
                 batch_request=batch_request,
-                create_expectation_suite_with_name="gesix_suite"
+                create_expectation_suite_with_name="dqt_suite"
             )
 
             total_rows = len(df)

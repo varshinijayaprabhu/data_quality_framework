@@ -86,7 +86,7 @@ class DataProfiler:
 
         return df
 
-    def generate(self, df: pd.DataFrame, title: str = "Gesix EDA Profile", output_filename: str = "eda_profile.html") -> str | None:
+    def generate(self, df: pd.DataFrame, title: str = "Data Quality Profile", output_filename: str = "eda_profile.html") -> str | None:
         try:
             from ydata_profiling import ProfileReport
         except ImportError:

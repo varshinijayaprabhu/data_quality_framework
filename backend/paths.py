@@ -7,7 +7,7 @@ def get_workspace_dir():
     Creates subdirectories for 'raw' and 'processed' if they don't exist.
     """
     # Use a specific sub-folder in temp to avoid colliding with other apps
-    base_temp = os.path.join(tempfile.gettempdir(), "gesix_data_quality")
+    base_temp = os.path.join(tempfile.gettempdir(), "dqt_framework")
     raw_dir = os.path.join(base_temp, "raw")
     processed_dir = os.path.join(base_temp, "processed")
     temp_dir = os.path.join(base_temp, "temp")

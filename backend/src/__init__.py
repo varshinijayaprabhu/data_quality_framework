@@ -1,1 +1,1 @@
-# Gesix Data Quality Pipeline Source Package
+# Data Quality and Trustability Pipeline Source Package
