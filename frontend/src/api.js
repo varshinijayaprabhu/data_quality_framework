@@ -61,19 +61,6 @@ export async function retrieveAnalysis(fileId) {
   return data.record;
 }
 
-export async function sendAnalysisIdEmail(email, analysisId) {
-  const res = await fetch(`${API_BASE}/send-analysis-id`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, analysis_id: analysisId }),
-  });
-  const data = await res.json().catch(() => ({ error: "Request failed" }));
-  if (!res.ok || !data.success) {
-    throw new Error(data.error || "Failed to send email");
-  }
-  return data;
-}
-
 export async function getRawData() {
   const res = await fetch(`${API_BASE}/raw-data`);
   const data = await res.json().catch(() => ({ data: [] }));

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { downloadPropertiesPdf } from "../pdfExport";
-import { sendAnalysisIdEmail } from "../api";
 import { downloadCleanedDataXlsx } from "../lib/downloadCleanedDataXlsx";
 
 import { Input } from "@/components/ui/input";
@@ -36,10 +35,8 @@ import {
   Lock,
   Clock,
   X,
-  Mail,
   Check,
   Loader2,
-  Send,
   AlertCircle,
   Database,
   ShieldCheck,
@@ -153,11 +150,6 @@ export default function Dashboard() {
   const [searchId, setSearchId] = useState("");
   const [edaViewerUrl, setEdaViewerUrl] = useState(null);
   const [edaViewerTitle, setEdaViewerTitle] = useState("");
-  const [showEmailInput, setShowEmailInput] = useState(false);
-  const [emailAddress, setEmailAddress] = useState("");
-  const [emailSending, setEmailSending] = useState(false);
-  const [emailStatus, setEmailStatus] = useState(null);
-  const [emailError, setEmailError] = useState("");
 
   const isUpload = sourceType === "upload";
 
@@ -179,22 +171,6 @@ export default function Dashboard() {
     navigator.clipboard.writeText(text);
   };
 
-  const handleSendEmail = async (idToSend) => {
-    if (!emailAddress.trim()) return;
-    setEmailSending(true);
-    setEmailStatus(null);
-    setEmailError("");
-    try {
-      await sendAnalysisIdEmail(emailAddress.trim(), idToSend);
-      setEmailStatus("sent");
-      setTimeout(() => { setShowEmailInput(false); setEmailStatus(null); setEmailAddress(""); }, 3000);
-    } catch (err) {
-      setEmailStatus("error");
-      setEmailError(err.message || "Failed to send email");
-    } finally {
-      setEmailSending(false);
-    }
-  };
 
   const isValidUrl = (urlStr) => {
     try {
@@ -337,15 +313,29 @@ export default function Dashboard() {
                     <ul className="space-y-3 text-sm text-muted-foreground">
                       <li className="flex gap-3">
                         <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                        <span><strong>Data Formatting:</strong> Ensure your file has only column headers in the first row. Remove any overarching sheet labels or blank rows before the data.</span>
+                        <span>
+                          <strong>Data Formatting:</strong> Ensure your file has
+                          only column headers in the first row. Remove any
+                          overarching sheet labels or blank rows before the
+                          data.
+                        </span>
                       </li>
                       <li className="flex gap-3">
                         <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                        <span><strong>File Size Limit:</strong> The maximum allowed file size is <strong>50MB</strong>.</span>
+                        <span>
+                          <strong>File Size Limit:</strong> The maximum allowed
+                          file size is <strong>50MB</strong>.
+                        </span>
                       </li>
                       <li className="flex gap-3">
                         <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                        <span><strong>Accepted Formats:</strong> .csv, .json, .xlsx, .xls, .xml, .txt, .pdf. <em>Executable files or scripts are strictly prohibited.</em></span>
+                        <span>
+                          <strong>Accepted Formats:</strong> .csv, .json, .xlsx,
+                          .xls, .xml, .txt, .pdf.{" "}
+                          <em>
+                            Executable files or scripts are strictly prohibited.
+                          </em>
+                        </span>
                       </li>
                     </ul>
                   </div>
@@ -388,33 +378,56 @@ export default function Dashboard() {
                   <div className="bg-primary/5 hover:bg-primary/10 border-2 border-primary/20 rounded-2xl p-6 transition-colors duration-300">
                     <h4 className="flex items-center gap-2 text-primary font-bold tracking-wide uppercase text-sm mb-4">
                       <Activity className="w-4 h-4" />
-                      {sourceType === "api" ? "API Ingestion Best Practices" : "Web Scraping Best Practices"}
+                      {sourceType === "api"
+                        ? "API Ingestion Best Practices"
+                        : "Web Scraping Best Practices"}
                     </h4>
                     <ul className="space-y-3 text-sm text-muted-foreground">
                       <li className="flex gap-3">
                         <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                        <span><strong>Secure Connections Only:</strong> All target URLs must use the highly secure <strong>HTTPS</strong> protocol. HTTP connections will not be executed.</span>
+                        <span>
+                          <strong>Secure Connections Only:</strong> All target
+                          URLs must use the highly secure <strong>HTTPS</strong>{" "}
+                          protocol. HTTP connections will not be executed.
+                        </span>
                       </li>
                       {sourceType === "api" ? (
                         <>
                           <li className="flex gap-3">
                             <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                            <span><strong>Authentication:</strong> Ensure your API Key or Bearer Token is valid for the target endpoint. Keys must be at least 8 characters long if provided.</span>
+                            <span>
+                              <strong>Authentication:</strong> Ensure your API
+                              Key or Bearer Token is valid for the target
+                              endpoint. Keys must be at least 8 characters long
+                              if provided.
+                            </span>
                           </li>
                           <li className="flex gap-3">
                             <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                            <span><strong>Payload Formatting:</strong> The API should return structured JSON or XML arrays.</span>
+                            <span>
+                              <strong>Payload Formatting:</strong> The API
+                              should return structured JSON or XML arrays.
+                            </span>
                           </li>
                         </>
                       ) : (
                         <>
                           <li className="flex gap-3">
                             <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                            <span><strong>Data Extraction:</strong> Ensure the target webpage contains structured tabular data (e.g., HTML tables or list structures) for accurate scraping.</span>
+                            <span>
+                              <strong>Data Extraction:</strong> Ensure the
+                              target webpage contains structured tabular data
+                              (e.g., HTML tables or list structures) for
+                              accurate scraping.
+                            </span>
                           </li>
                           <li className="flex gap-3">
                             <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                            <span><strong>Compliance:</strong> Verify that scraping the target website complies with their Terms of Service.</span>
+                            <span>
+                              <strong>Compliance:</strong> Verify that scraping
+                              the target website complies with their Terms of
+                              Service.
+                            </span>
                           </li>
                         </>
                       )}
@@ -435,12 +448,14 @@ export default function Dashboard() {
                       disabled={processing}
                       className={`input-field max-w-lg ${sourceUrl.trim().length > 0 && !isValidUrl(sourceUrl.trim()) ? "border-destructive focus-visible:ring-destructive/20" : ""}`}
                     />
-                    {sourceUrl.trim().length > 0 && !isValidUrl(sourceUrl.trim()) && (
-                       <p className="text-xs text-destructive mt-2 font-medium flex items-center gap-1.5">
-                         <AlertCircle className="w-3.5 h-3.5" /> 
-                         Security Policy: Only secure HTTPS connections are permitted. HTTP is blocked.
-                       </p>
-                    )}
+                    {sourceUrl.trim().length > 0 &&
+                      !isValidUrl(sourceUrl.trim()) && (
+                        <p className="text-xs text-destructive mt-2 font-medium flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          Security Policy: Only secure HTTPS connections are
+                          permitted. HTTP is blocked.
+                        </p>
+                      )}
                   </div>
 
                   {sourceType === "api" && (
@@ -484,11 +499,16 @@ export default function Dashboard() {
                         <div className="mt-6 space-y-2 animate-in fade-in zoom-in-95">
                           <Label className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
                             API Key / Bearer Token
-                            {apiKey.trim().length > 0 && apiKey.trim().length < 8 && (
-                                <span className="text-[10px] text-destructive uppercase tracking-widest font-black ml-auto">Invalid</span>
-                            )}
+                            {apiKey.trim().length > 0 &&
+                              apiKey.trim().length < 8 && (
+                                <span className="text-[10px] text-destructive uppercase tracking-widest font-black ml-auto">
+                                  Invalid
+                                </span>
+                              )}
                             {apiKey.trim().length >= 8 && (
-                                <span className="text-[10px] text-emerald-500 uppercase tracking-widest font-black ml-auto">Valid Format</span>
+                              <span className="text-[10px] text-emerald-500 uppercase tracking-widest font-black ml-auto">
+                                Valid Format
+                              </span>
                             )}
                           </Label>
                           <Input
@@ -500,10 +520,16 @@ export default function Dashboard() {
                             className={`input-field font-mono max-w-lg ${apiKey.trim().length > 0 && apiKey.trim().length < 8 ? "border-destructive focus-visible:ring-destructive/20" : ""}`}
                           />
                           <p className="text-xs text-muted-foreground flex justify-between">
-                            <span>Key will be sent as Authorization header and x-api-key</span>
-                            {apiKey.trim().length > 0 && apiKey.trim().length < 8 && (
-                                <span className="text-destructive font-bold">Minimum 8 characters required</span>
-                            )}
+                            <span>
+                              Key will be sent as Authorization header and
+                              x-api-key
+                            </span>
+                            {apiKey.trim().length > 0 &&
+                              apiKey.trim().length < 8 && (
+                                <span className="text-destructive font-bold">
+                                  Minimum 8 characters required
+                                </span>
+                              )}
                           </p>
                         </div>
                       )}
@@ -580,7 +606,10 @@ export default function Dashboard() {
                     Raw Data Quality
                   </Badge>
                   <h2 className="text-5xl md:text-7xl font-serif font-black tracking-tight mb-4 text-foreground drop-shadow-sm">
-                    {Math.round(rawReport.overall_trustability)}<span className="text-3xl md:text-5xl text-muted-foreground/50 font-medium">/100</span>
+                    {Math.round(rawReport.overall_trustability)}
+                    <span className="text-3xl md:text-5xl text-muted-foreground/50 font-medium">
+                      /100
+                    </span>
                   </h2>
                   <p className="text-xl font-medium text-foreground mb-10 flex items-center gap-3">
                     {rawReport.total_records}{" "}
@@ -629,7 +658,10 @@ export default function Dashboard() {
                     Cleaned Data Quality
                   </Badge>
                   <h2 className="text-5xl md:text-7xl font-serif font-black tracking-tight mb-4 text-foreground drop-shadow-sm">
-                    {Math.round(cleanedReport.overall_trustability)}<span className="text-3xl md:text-5xl text-muted-foreground/50 font-medium">/100</span>
+                    {Math.round(cleanedReport.overall_trustability)}
+                    <span className="text-3xl md:text-5xl text-muted-foreground/50 font-medium">
+                      /100
+                    </span>
                   </h2>
                   <p className="text-xl font-medium text-foreground mb-10 flex items-center gap-3">
                     {cleanedReport.total_records}{" "}
@@ -803,86 +835,63 @@ export default function Dashboard() {
                     </div>
 
                     <div className="flex flex-col items-center gap-4 mt-10 mb-16">
-                        <div className="flex gap-4 w-full max-w-xl">
-                          {edaUrl && (
-                            <button
-                              onClick={() => { setEdaViewerUrl(edaUrl); setEdaViewerTitle("EDA Profile (Cleaned)"); }}
-                              className="flex-1 px-4 py-4 text-lg font-bold rounded-xl bg-secondary text-secondary-foreground flex items-center justify-center gap-2 shadow-md hover:bg-secondary/80 transition-all border-2 border-secondary uppercase tracking-tight cursor-pointer"
-                            >
-                              <Activity className="w-5 h-5" />
-                              Cleaned EDA
-                            </button>
-                          )}
-                          {rawEdaUrl && (
-                            <button
-                              onClick={() => { setEdaViewerUrl(rawEdaUrl); setEdaViewerTitle("EDA Profile (Raw)"); }}
-                              className="flex-1 px-4 py-4 text-lg font-bold rounded-xl bg-muted text-muted-foreground flex items-center justify-center gap-2 shadow-md hover:bg-muted/80 transition-all border-2 border-muted uppercase tracking-tight cursor-pointer"
-                            >
-                              <Activity className="w-5 h-5" />
-                              Raw EDA
-                            </button>
-                          )}
-                        </div>
-                        
-                        {analysisId && (
-                            <div className="mt-8 p-6 bg-primary/5 rounded-3xl border-2 border-primary/20 flex flex-col items-center gap-4 w-full max-w-xl">
-                                <div className="text-center w-full">
-                                    <div className="flex items-center justify-center gap-2 mb-2">
-                                        <Lock className="w-4 h-4 text-primary" />
-                                        <p className="text-xs uppercase tracking-[0.2em] font-black text-primary">Private Analysis ID</p>
-                                    </div>
-                                    <p className="text-xl font-mono font-bold text-foreground break-all bg-background/50 p-4 rounded-xl border border-border/50 select-all">{analysisId}</p>
-                                    <p className="text-[10px] text-muted-foreground mt-3 uppercase tracking-widest font-bold">Copy or email this ID to retrieve your report later. Valid for 7 days.</p>
-                                </div>
-                                <Button 
-                                    variant="outline" 
-                                    onClick={() => copyToClipboard(analysisId)}
-                                    className="w-full h-12 rounded-xl flex items-center justify-center gap-3 hover:bg-primary hover:text-primary-foreground transition-all duration-300 group"
-                                >
-                                    <Copy className="w-5 h-5 group-hover:scale-110 transition-transform" /> 
-                                    <span className="font-bold uppercase tracking-widest">Copy Analysis ID</span>
-                                </Button>
-                                <Button 
-                                    variant="outline" 
-                                    onClick={() => { setShowEmailInput(!showEmailInput); setEmailStatus(null); setEmailError(""); }}
-                                    className="w-full h-12 rounded-xl flex items-center justify-center gap-3 hover:bg-primary hover:text-primary-foreground transition-all duration-300 group"
-                                >
-                                    <Mail className="w-5 h-5 group-hover:scale-110 transition-transform" /> 
-                                    <span className="font-bold uppercase tracking-widest">Email Analysis ID</span>
-                                </Button>
-                                {showEmailInput && (
-                                    <div className="w-full mt-2 animate-in fade-in slide-in-from-top-4 duration-300">
-                                        <div className="flex gap-2">
-                                            <Input
-                                                type="email"
-                                                placeholder="Enter your email address"
-                                                value={emailAddress}
-                                                onChange={(e) => setEmailAddress(e.target.value)}
-                                                className="flex-1 h-12 rounded-xl"
-                                                disabled={emailSending}
-                                                onKeyDown={(e) => e.key === 'Enter' && handleSendEmail(analysisId)}
-                                            />
-                                            <Button
-                                                onClick={() => handleSendEmail(analysisId)}
-                                                disabled={emailSending || !emailAddress.trim()}
-                                                className="h-12 rounded-xl px-6 font-bold uppercase tracking-widest"
-                                            >
-                                                {emailSending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send"}
-                                            </Button>
-                                        </div>
-                                        {emailStatus === 'sent' && (
-                                            <p className="text-emerald-500 text-sm font-bold mt-2 flex items-center justify-center gap-2">
-                                                <Check className="w-4 h-4" /> Analysis ID sent to your email!
-                                            </p>
-                                        )}
-                                        {emailStatus === 'error' && (
-                                            <p className="text-destructive text-sm font-bold mt-2">⚠️ {emailError}</p>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                      <div className="flex gap-4 w-full max-w-xl">
+                        {edaUrl && (
+                          <button
+                            onClick={() => {
+                              setEdaViewerUrl(edaUrl);
+                              setEdaViewerTitle("EDA Profile (Cleaned)");
+                            }}
+                            className="flex-1 px-4 py-4 text-lg font-bold rounded-xl bg-secondary text-secondary-foreground flex items-center justify-center gap-2 shadow-md hover:bg-secondary/80 transition-all border-2 border-secondary uppercase tracking-tight cursor-pointer"
+                          >
+                            <Activity className="w-5 h-5" />
+                            Cleaned EDA
+                          </button>
+                        )}
+                        {rawEdaUrl && (
+                          <button
+                            onClick={() => {
+                              setEdaViewerUrl(rawEdaUrl);
+                              setEdaViewerTitle("EDA Profile (Raw)");
+                            }}
+                            className="flex-1 px-4 py-4 text-lg font-bold rounded-xl bg-muted text-muted-foreground flex items-center justify-center gap-2 shadow-md hover:bg-muted/80 transition-all border-2 border-muted uppercase tracking-tight cursor-pointer"
+                          >
+                            <Activity className="w-5 h-5" />
+                            Raw EDA
+                          </button>
                         )}
                       </div>
+
+                      {analysisId && (
+                        <div className="mt-8 p-6 bg-primary/5 rounded-3xl border-2 border-primary/20 flex flex-col items-center gap-4 w-full max-w-xl">
+                          <div className="text-center w-full">
+                            <div className="flex items-center justify-center gap-2 mb-2">
+                              <Lock className="w-4 h-4 text-primary" />
+                              <p className="text-xs uppercase tracking-[0.2em] font-black text-primary">
+                                Private Analysis ID
+                              </p>
+                            </div>
+                            <p className="text-xl font-mono font-bold text-foreground break-all bg-background/50 p-4 rounded-xl border border-border/50 select-all">
+                              {analysisId}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-3 uppercase tracking-widest font-bold">
+                              Copy this ID to retrieve your report later. Valid
+                              for 7 days.
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            onClick={() => copyToClipboard(analysisId)}
+                            className="w-full h-12 rounded-xl flex items-center justify-center gap-3 hover:bg-primary hover:text-primary-foreground transition-all duration-300 group"
+                          >
+                            <Copy className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                            <span className="font-bold uppercase tracking-widest">
+                              Copy Analysis ID
+                            </span>
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -916,38 +925,57 @@ export default function Dashboard() {
               </h2>
               <div className="flex flex-wrap items-center justify-center gap-3 text-sm md:text-base text-muted-foreground font-medium mb-12">
                 <span className="bg-secondary/30 px-3 py-1 rounded-md font-mono text-foreground">
-                {(() => {
-                  const mime = retrievedRecord.file_type || "";
-                  const map = {
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
-                    "application/vnd.ms-excel": "XLS",
-                    "text/csv": "CSV",
-                    "application/json": "JSON",
-                    "application/pdf": "PDF",
-                    "text/plain": "TXT",
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
-                  };
-                  return map[mime.toLowerCase()] || mime.split("/").pop()?.toUpperCase() || retrievedRecord.file_name?.split(".").pop()?.toUpperCase() || "FILE";
-                })()}
+                  {(() => {
+                    const mime = retrievedRecord.file_type || "";
+                    const map = {
+                      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                        "XLSX",
+                      "application/vnd.ms-excel": "XLS",
+                      "text/csv": "CSV",
+                      "application/json": "JSON",
+                      "application/pdf": "PDF",
+                      "text/plain": "TXT",
+                      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                        "DOCX",
+                    };
+                    return (
+                      map[mime.toLowerCase()] ||
+                      mime.split("/").pop()?.toUpperCase() ||
+                      retrievedRecord.file_name
+                        ?.split(".")
+                        .pop()
+                        ?.toUpperCase() ||
+                      "FILE"
+                    );
+                  })()}
                 </span>
                 <span>&middot;</span>
                 <span className="flex items-center gap-1.5 object-contain">
-                {(() => {
-                  const src = retrievedRecord.source || "";
-                  const sourceMap = {
-                    "others_upload": "File Upload",
-                    "xlsx_upload": "XLSX Upload",
-                    "json_upload": "JSON Upload",
-                    "parquet_upload": "Parquet Upload",
-                    "api": "API Ingestion",
-                    "link": "URL Ingestion",
-                    "upload": "File Upload"
-                  };
-                  return sourceMap[src.toLowerCase()] || src.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
-                })()}
+                  {(() => {
+                    const src = retrievedRecord.source || "";
+                    const sourceMap = {
+                      others_upload: "File Upload",
+                      xlsx_upload: "XLSX Upload",
+                      json_upload: "JSON Upload",
+                      parquet_upload: "Parquet Upload",
+                      api: "API Ingestion",
+                      link: "URL Ingestion",
+                      upload: "File Upload",
+                    };
+                    return (
+                      sourceMap[src.toLowerCase()] ||
+                      src
+                        .replace(/_/g, " ")
+                        .replace(/\b\w/g, (l) => l.toUpperCase())
+                    );
+                  })()}
                 </span>
                 <span>&middot;</span>
-                <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" />Uploaded {new Date(retrievedRecord.upload_date).toLocaleDateString()}</span>
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4" />
+                  Uploaded{" "}
+                  {new Date(retrievedRecord.upload_date).toLocaleDateString()}
+                </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
@@ -959,34 +987,52 @@ export default function Dashboard() {
                     className="group/card flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border-2 border-border/60 bg-background/80 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
                   >
                     <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center group-hover/card:scale-110 transition-transform">
-                        <FileText className="w-8 h-8 text-primary" />
+                      <FileText className="w-8 h-8 text-primary" />
                     </div>
-                    <span className="text-sm font-black uppercase tracking-widest text-foreground">Quality Report</span>
-                    <span className="text-xs text-muted-foreground flex items-center gap-1 mt-auto">Open PDF <ExternalLink className="w-3 h-3" /></span>
+                    <span className="text-sm font-black uppercase tracking-widest text-foreground">
+                      Quality Report
+                    </span>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1 mt-auto">
+                      Open PDF <ExternalLink className="w-3 h-3" />
+                    </span>
                   </a>
                 )}
                 {edaUrl && (
                   <button
-                    onClick={() => { setEdaViewerUrl(edaUrl); setEdaViewerTitle("EDA Profile (Cleaned)"); }}
+                    onClick={() => {
+                      setEdaViewerUrl(edaUrl);
+                      setEdaViewerTitle("EDA Profile (Cleaned)");
+                    }}
                     className="group/card flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border-2 border-border/60 bg-background/80 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer w-full"
                   >
                     <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center group-hover/card:scale-110 transition-transform">
-                        <Activity className="w-8 h-8 text-primary" />
+                      <Activity className="w-8 h-8 text-primary" />
                     </div>
-                    <span className="text-sm font-black uppercase tracking-widest text-foreground">Cleaned EDA</span>
-                    <span className="text-xs text-muted-foreground flex items-center gap-1 mt-auto">View Profile <ExternalLink className="w-3 h-3" /></span>
+                    <span className="text-sm font-black uppercase tracking-widest text-foreground">
+                      Cleaned EDA
+                    </span>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1 mt-auto">
+                      View Profile <ExternalLink className="w-3 h-3" />
+                    </span>
                   </button>
                 )}
                 {rawEdaUrl && (
                   <button
-                    onClick={() => { setEdaViewerUrl(rawEdaUrl); setEdaViewerTitle("EDA Profile (Raw)"); }}
+                    onClick={() => {
+                      setEdaViewerUrl(rawEdaUrl);
+                      setEdaViewerTitle("EDA Profile (Raw)");
+                    }}
                     className="group/card flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border-2 border-border/60 bg-background/80 hover:border-amber-500/50 hover:bg-amber-500/5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer w-full"
                   >
                     <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center group-hover/card:scale-110 transition-transform">
-                        <Activity className="w-8 h-8 text-amber-500" />
+                      <Activity className="w-8 h-8 text-amber-500" />
                     </div>
-                    <span className="text-sm font-black uppercase tracking-widest text-foreground">Raw EDA</span>
-                    <span className="text-xs text-muted-foreground flex items-center gap-1 mt-auto">View Profile <ExternalLink className="w-3 h-3" /></span>
+                    <span className="text-sm font-black uppercase tracking-widest text-foreground">
+                      Raw EDA
+                    </span>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1 mt-auto">
+                      View Profile <ExternalLink className="w-3 h-3" />
+                    </span>
                   </button>
                 )}
               </div>
@@ -995,71 +1041,37 @@ export default function Dashboard() {
                 <div className="p-8 bg-primary/5 rounded-3xl border-2 border-primary/20 flex flex-col items-center gap-5 w-full max-w-xl mx-auto mt-16 shadow-inner">
                   <div className="text-center w-full">
                     <div className="flex items-center justify-center gap-2 mb-3 mt-2">
-                       <span className="relative flex h-3 w-3">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-                        </span>
-                      <p className="text-xs uppercase tracking-[0.2em] font-black text-primary">Analysis ID</p>
+                      <span className="relative flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                      </span>
+                      <p className="text-xs uppercase tracking-[0.2em] font-black text-primary">
+                        Analysis ID
+                      </p>
                     </div>
-                    <p className="text-xl md:text-2xl font-mono font-black text-foreground break-all bg-background/80 p-5 rounded-2xl border border-border/80 select-all shadow-sm">{analysisId}</p>
+                    <p className="text-xl md:text-2xl font-mono font-black text-foreground break-all bg-background/80 p-5 rounded-2xl border border-border/80 select-all shadow-sm">
+                      {analysisId}
+                    </p>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-3 w-full mt-4">
-                      <Button
-                        variant="outline"
-                        onClick={() => copyToClipboard(analysisId)}
-                        className="flex-1 h-14 rounded-xl flex items-center justify-center gap-3 hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all duration-300 group border-2"
-                      >
-                        <Copy className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                        <span className="font-bold uppercase tracking-widest text-xs">Copy ID</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => { setShowEmailInput(!showEmailInput); setEmailStatus(null); setEmailError(""); }}
-                        className="flex-1 h-14 rounded-xl flex items-center justify-center gap-3 hover:bg-primary hover:text-primary-foreground transition-all duration-300 group border-2"
-                      >
-                        <Mail className="w-5 h-5 group-hover:scale-110 group-hover:-rotate-12 transition-transform" />
-                        <span className="font-bold uppercase tracking-widest text-xs">Email ID</span>
-                      </Button>
-                  </div>
-                  {showEmailInput && (
-                    <div className="w-full mt-4 animate-in fade-in slide-in-from-top-4 duration-300 bg-background/50 p-4 rounded-xl border border-border/50">
-                      <div className="flex gap-2">
-                        <Input
-                          type="email"
-                          placeholder="Your email address"
-                          value={emailAddress}
-                          onChange={(e) => setEmailAddress(e.target.value)}
-                          className="flex-1 h-12 rounded-xl border-border/80 focus-visible:ring-primary/20"
-                          disabled={emailSending}
-                          onKeyDown={(e) => e.key === 'Enter' && handleSendEmail(analysisId)}
-                        />
-                        <Button
-                          onClick={() => handleSendEmail(analysisId)}
-                          disabled={emailSending || !emailAddress.trim()}
-                          className="h-12 rounded-xl px-6 font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:bg-primary/90"
-                        >
-                          {emailSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                        </Button>
-                      </div>
-                      {emailStatus === 'sent' && (
-                        <p className="text-emerald-500 text-xs font-bold mt-4 flex items-center justify-center gap-2 bg-emerald-500/10 py-2 rounded-lg">
-                          <Check className="w-4 h-4" /> ID sent successfully!
-                        </p>
-                      )}
-                      {emailStatus === 'error' && (
-                        <p className="text-destructive text-xs font-bold mt-4 flex items-center justify-center gap-2 bg-destructive/10 py-2 rounded-lg">
-                          <AlertCircle className="w-4 h-4" /> {emailError}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                    <Button
+                      variant="outline"
+                      onClick={() => copyToClipboard(analysisId)}
+                      className="w-full h-14 rounded-xl flex items-center justify-center gap-3 hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all duration-300 group border-2"
+                    >
+                      <Copy className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                      <span className="font-bold uppercase tracking-widest text-xs">
+                        Copy Analysis ID
+                      </span>
+                    </Button>
                 </div>
               )}
 
               {!reportUrl && !edaUrl && !rawEdaUrl && (
                 <div className="mt-12 p-8 border border-border/50 rounded-2xl bg-secondary/10 flex flex-col items-center">
-                    <Database className="w-12 h-12 text-muted-foreground/30 mb-4" />
-                    <p className="text-muted-foreground text-lg font-medium">No cloud artifacts available for this analysis.</p>
+                  <Database className="w-12 h-12 text-muted-foreground/30 mb-4" />
+                  <p className="text-muted-foreground text-lg font-medium">
+                    No cloud artifacts available for this analysis.
+                  </p>
                 </div>
               )}
             </div>
@@ -1074,42 +1086,51 @@ export default function Dashboard() {
         <div className="container mx-auto px-6 max-w-4xl text-center relative z-10">
           <div className="mb-14">
             <h2 className="text-4xl md:text-5xl font-serif font-black tracking-tight mb-6 flex items-center justify-center gap-4 text-foreground">
-                <Lock className="w-10 h-10 text-primary" />
-                Private Report Retrieval
+              <Lock className="w-10 h-10 text-primary" />
+              Private Report Retrieval
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Enter your unique Analysis ID to retrieve your persistent cloud reports. 
+              Enter your unique Analysis ID to retrieve your persistent cloud
+              reports.
               <span className="block mt-4 font-bold text-primary flex items-center justify-center gap-2 bg-primary/5 w-fit mx-auto px-4 py-2 rounded-full border border-primary/10 text-sm">
-                <Clock className="w-4 h-4" /> Reports are purged after 7 days for your privacy.
+                <Clock className="w-4 h-4" /> Reports are purged after 7 days
+                for your privacy.
               </span>
             </p>
           </div>
 
-          <form onSubmit={handleRetrieve} className="flex flex-col sm:flex-row gap-4 max-w-3xl mx-auto">
+          <form
+            onSubmit={handleRetrieve}
+            className="flex flex-col sm:flex-row gap-4 max-w-3xl mx-auto"
+          >
             <div className="relative flex-1">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input 
-                    placeholder="Paste your Analysis ID here..." 
-                    value={searchId}
-                    onChange={(e) => setSearchId(e.target.value)}
-                    className="border-2 border-border/80 bg-background/50 backdrop-blur-sm pl-14 h-16 rounded-2xl focus-visible:border-primary focus-visible:ring-primary/20 text-foreground font-mono text-lg shadow-sm w-full"
-                />
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                placeholder="Paste your Analysis ID here..."
+                value={searchId}
+                onChange={(e) => setSearchId(e.target.value)}
+                className="border-2 border-border/80 bg-background/50 backdrop-blur-sm pl-14 h-16 rounded-2xl focus-visible:border-primary focus-visible:ring-primary/20 text-foreground font-mono text-lg shadow-sm w-full"
+              />
             </div>
-            <Button 
-                type="submit" 
-                disabled={processing || !searchId.trim()}
-                className="btn-primary rounded-2xl h-16 px-10 font-black uppercase tracking-widest text-sm w-full sm:w-auto"
+            <Button
+              type="submit"
+              disabled={processing || !searchId.trim()}
+              className="btn-primary rounded-2xl h-16 px-10 font-black uppercase tracking-widest text-sm w-full sm:w-auto"
             >
-                {processing ? <Loader2 className="w-6 h-6 animate-spin" /> : "Retrieve"}
+              {processing ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : (
+                "Retrieve"
+              )}
             </Button>
           </form>
-          
+
           {error && (
-              <div className="mt-8 animate-in fade-in slide-in-from-top-4">
-                  <p className="inline-flex items-center gap-2 text-destructive font-bold text-sm bg-destructive/10 py-3 px-6 rounded-xl border border-destructive/20 shadow-sm">
-                      <AlertCircle className="w-4 h-4" /> {error}
-                  </p>
-              </div>
+            <div className="mt-8 animate-in fade-in slide-in-from-top-4">
+              <p className="inline-flex items-center gap-2 text-destructive font-bold text-sm bg-destructive/10 py-3 px-6 rounded-xl border border-destructive/20 shadow-sm">
+                <AlertCircle className="w-4 h-4" /> {error}
+              </p>
+            </div>
           )}
         </div>
       </section>
@@ -1120,12 +1141,17 @@ export default function Dashboard() {
           <div className="flex items-center justify-between px-6 py-4 bg-background/95 border-b border-border shadow-lg">
             <div className="flex items-center gap-3">
               <Activity className="w-5 h-5 text-primary" />
-              <h3 className="text-lg font-bold uppercase tracking-widest">{edaViewerTitle}</h3>
+              <h3 className="text-lg font-bold uppercase tracking-widest">
+                {edaViewerTitle}
+              </h3>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => { setEdaViewerUrl(null); setEdaViewerTitle(""); }}
+              onClick={() => {
+                setEdaViewerUrl(null);
+                setEdaViewerTitle("");
+              }}
               className="rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors"
             >
               <X className="w-5 h-5" />

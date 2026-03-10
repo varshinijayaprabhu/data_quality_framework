@@ -15,11 +15,10 @@ import uuid
 load_dotenv()
 
 try:
-    from requests.packages.urllib3.exceptions import InsecureRequestWarning
+    from urllib3.exceptions import InsecureRequestWarning
     warnings.simplefilter('ignore', InsecureRequestWarning)
 except ImportError:
-    pass
-warnings.filterwarnings("ignore", category=UserWarning, module='requests')
+    warnings.filterwarnings("ignore", category=UserWarning, module='requests')
 
 # Allow importing src modules
 SRC_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
@@ -304,7 +303,7 @@ async def api_process(
             "size": upload_result["size"],
             "url": upload_result["url"],
         })
-        asyncio.create_task(insert_file_metadata(metadata))
+        await insert_file_metadata(metadata)
 
         # Use local file path for downstream processing
         file_path = local_path
@@ -319,7 +318,7 @@ async def api_process(
                 }
             )
         # For remote sources, insert metadata now before processing starts
-        asyncio.create_task(insert_file_metadata(metadata))
+        await insert_file_metadata(metadata)
     
     try:
         report = run_pipeline(
@@ -370,7 +369,7 @@ async def api_process(
                         cleaned_parquet_result = upload_file(bucket_name, f"cleaned_{file_id}.parquet", f.read(), "application/octet-stream")
                         cleaned_parquet_url = cleaned_parquet_result["url"]
                 
-                asyncio.create_task(update_parquet_urls(file_id, raw_parquet_url, cleaned_parquet_url))
+                await update_parquet_urls(file_id, raw_parquet_url, cleaned_parquet_url)
 
                 # 2. Generate and Upload EDA Profiles
                 profiler = DataProfiler()
@@ -396,7 +395,7 @@ async def api_process(
                             raw_eda_profile_url = raw_eda_result["url"]
                         os.remove(raw_eda_local)
                 
-                asyncio.create_task(update_eda_urls(file_id, raw_eda_profile_url, eda_profile_url))
+                await update_eda_urls(file_id, raw_eda_profile_url, eda_profile_url)
 
                 # 3. Generate and Upload PDF Report
                 report_filename = f"report_{file_id}.pdf"
@@ -413,11 +412,11 @@ async def api_process(
                     pdf_url = pdf_result["url"]
                 os.remove(report_path)
 
-                asyncio.create_task(update_file_status_and_report(file_id, "completed", pdf_url))
+                await update_file_status_and_report(file_id, "completed", pdf_url)
 
             except Exception as artifact_error:
                 print(f"Artifact Generation/Upload Error: {artifact_error}")
-                asyncio.create_task(update_file_status_and_report(metadata["id"], "artifact_failed", None))
+                await update_file_status_and_report(metadata["id"], "artifact_failed", None)
 
         response_data = {
             "success": is_success,
@@ -506,77 +505,6 @@ async def eda_viewer_proxy(url: str):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"Proxy error: {str(e)}"})
 
-from pydantic import BaseModel
-
-class EmailRequest(BaseModel):
-    email: str
-    analysis_id: str
-
-@app.post("/api/send-analysis-id", summary="Email the Analysis ID to the user")
-async def send_analysis_id(req: EmailRequest):
-    """Send the unique Analysis ID to the user's email address via Brevo HTTP API."""
-    import re
-    import httpx
-
-    # Validate email format
-    email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
-    if not email_pattern.match(req.email):
-        return JSONResponse(status_code=400, content={"success": False, "error": "Invalid email address format."})
-
-    # Validate UUID format
-    uuid_pattern = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
-    if not uuid_pattern.match(req.analysis_id):
-        return JSONResponse(status_code=400, content={"success": False, "error": "Invalid Analysis ID format."})
-
-    brevo_key = os.getenv("BREVO_API_KEY")
-    sender_email = os.getenv("SMTP_EMAIL") # Using the verified sender email
-
-    if not brevo_key or not sender_email:
-        return JSONResponse(status_code=500, content={"success": False, "error": "Email service (Brevo) is not configured correctly."})
-
-    # Build HTML email
-    html_body = f"""
-    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #f8f9fa; border-radius: 16px; padding: 40px 32px; border: 1px solid #e9ecef;">
-        <div style="text-align: center; margin-bottom: 24px;">
-            <h2 style="color: #1a1a2e; font-size: 22px; margin: 0 0 4px 0;">Data Quality and Trustability</h2>
-            <p style="color: #6c757d; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin: 0;">Analysis ID Receipt</p>
-        </div>
-        <div style="background: #ffffff; border-radius: 12px; padding: 24px; border: 2px solid #dee2e6; text-align: center; margin-bottom: 20px;">
-            <p style="color: #6c757d; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 12px 0; font-weight: 700;">Your Unique Analysis ID</p>
-            <p style="font-family: 'Courier New', monospace; font-size: 18px; font-weight: bold; color: #1a1a2e; background: #f1f3f5; padding: 14px 16px; border-radius: 8px; margin: 0; word-break: break-all; border: 1px solid #dee2e6;">{req.analysis_id}</p>
-        </div>
-        <div style="background: #fff3cd; border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; border: 1px solid #ffc107;">
-            <p style="color: #664d03; font-size: 13px; margin: 0;"><strong>⏳ Valid for 7 days.</strong> Use this ID on the Dashboard to retrieve your report.</p>
-        </div>
-        <p style="color: #adb5bd; font-size: 11px; text-align: center; margin: 0;">This is an automated message from the Data Quality Platform.</p>
-    </div>
-    """
-
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(
-                "https://api.brevo.com/v3/smtp/email",
-                headers={
-                    "api-key": brevo_key,
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "sender": {"email": sender_email, "name": "Data Quality Platform"},
-                    "to": [{"email": req.email}],
-                    "subject": "Your Analysis ID",
-                    "htmlContent": html_body
-                }
-            )
-            
-            if response.status_code in [201, 202, 200]:
-                print(f"[*] Analysis ID emailed to {req.email} via Brevo")
-                return {"success": True, "message": "Analysis ID sent to your email."}
-            else:
-                print(f"[!] Brevo API Error: {response.status_code} - {response.text}")
-                return JSONResponse(status_code=500, content={"success": False, "error": f"Email service error: {response.text}"})
-        except Exception as e:
-            print(f"[!] Brevo Request Failed: {e}")
-            return JSONResponse(status_code=500, content={"success": False, "error": f"Failed to connect to email service: {str(e)}"})
 
 @app.get("/api/retrieve/{file_id}", summary="Retrieve a private analysis record")
 async def retrieve_analysis(file_id: str):
