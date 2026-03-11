@@ -119,6 +119,10 @@ def get_latest_raw_data():
         if len(df) > 100: 
             df = df.head(100)
         
+        # Format datetime columns as strings to prevent unix timestamp conversion
+        for col in df.select_dtypes(include=['datetime', 'datetimetz']).columns:
+            df[col] = df[col].dt.strftime('%Y-%m-%d %H:%M:%S').str.replace(r' 00:00:00$', '', regex=True).replace('NaT', '—')
+            
         # Handle BOTH NaN and empty strings as missing
         df = df.fillna("—")
         # Also replace empty strings and whitespace-only strings
@@ -151,6 +155,10 @@ def get_raw_and_cleaned_data():
             df = pd.read_parquet(RAW_STRUCTURED)
             if len(df) > 100:
                 df = df.head(100)
+            
+            for col in df.select_dtypes(include=['datetime', 'datetimetz']).columns:
+                df[col] = df[col].dt.strftime('%Y-%m-%d %H:%M:%S').str.replace(r' 00:00:00$', '', regex=True).replace('NaT', '—')
+                
             df = df.fillna("—")
             for col in df.select_dtypes(include=['object', 'string']).columns:
                 df[col] = df[col].apply(lambda x: "—" if isinstance(x, str) and x.strip() == "" else x)
@@ -165,6 +173,10 @@ def get_raw_and_cleaned_data():
             df = pd.read_parquet(CLEANED_PARQUET)
             if len(df) > 100:
                 df = df.head(100)
+                
+            for col in df.select_dtypes(include=['datetime', 'datetimetz']).columns:
+                df[col] = df[col].dt.strftime('%Y-%m-%d %H:%M:%S').str.replace(r' 00:00:00$', '', regex=True).replace('NaT', '—')
+                
             df = df.fillna("—")
             for col in df.select_dtypes(include=['object', 'string']).columns:
                 df[col] = df[col].apply(lambda x: "—" if isinstance(x, str) and x.strip() == "" else x)
